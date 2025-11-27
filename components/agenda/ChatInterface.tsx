@@ -1,14 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Message, Appointment, WhatsAppConversation } from '../../types';
-import { getAgendaResponse } from '../../services/agendaService';
+import { WhatsAppConversation, Professional } from '../../types';
 
 interface ChatInterfaceProps {
     conversation: WhatsAppConversation | undefined;
     onSendMessage: (text: string, conversationId: string) => void;
-    onNewAppointment: (appointment: Omit<Appointment, 'id'>) => void;
+    selectedProfessional: Professional | undefined;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ conversation, onSendMessage, onNewAppointment }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ conversation, onSendMessage, selectedProfessional }) => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -31,6 +30,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ conversation, onSendMessa
     setIsLoading(false);
   };
   
+  const handleSuggestTimes = async () => {
+    if (!selectedProfessional || !conversation) return;
+    const prompt = `Pode me informar os horários disponíveis para ${selectedProfessional.name} para amanhã?`;
+    setIsLoading(true);
+    await onSendMessage(prompt, conversation.id);
+    setIsLoading(false);
+  }
+
   if (!conversation) {
     return (
         <div className="bg-white rounded-2xl shadow-md flex flex-col h-full items-center justify-center text-center p-4">
@@ -82,15 +89,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ conversation, onSendMessa
         )}
         <div ref={messagesEndRef} />
       </div>
+      
+      {selectedProfessional && (
+        <div className="p-2 border-t border-gray-200 text-center bg-gray-50">
+            <button
+                onClick={handleSuggestTimes}
+                disabled={isLoading}
+                className="bg-teal-50 text-teal-800 hover:bg-teal-100 disabled:opacity-50 text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-2 mx-auto"
+            >
+                <i className="ph ph-sparkle"></i>
+                Sugerir horários com {selectedProfessional.name.split(' ')[0]}
+            </button>
+        </div>
+      )}
 
       <div className="p-4 border-t border-gray-200 bg-gray-50">
-        <p className="text-xs text-center text-gray-500 mb-2 font-semibold">Intervenção Manual (Equipe da Clínica)</p>
         <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Responder como membro da equipe..."
+            placeholder="Digite aqui para o bot responder..."
             className="flex-grow bg-white border border-gray-300 text-gray-900 text-sm rounded-full focus:ring-[#1B7C75] focus:border-[#1B7C75] block w-full p-2.5 px-4"
             disabled={isLoading}
           />

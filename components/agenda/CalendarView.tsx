@@ -1,70 +1,150 @@
-import React from 'react';
-import { Appointment } from '../../types';
+import React, { useState } from 'react';
+import { Professional, TimeSlot } from '../../types';
 
 interface CalendarViewProps {
-  appointments: Appointment[];
+  professionals: Professional[];
+  selectedProfessional: Professional | undefined;
+  onSelectProfessional: (professionalId: string | null) => void;
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({ appointments }) => {
-  const today = new Date('2025-11-20T12:00:00Z'); // Fixed date for consistent mock view
-  const weekDays = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-  const appointmentsByDate: { [key: string]: Appointment[] } = appointments.reduce((acc, appt) => {
-    (acc[appt.date] = acc[appt.date] || []).push(appt);
-    return acc;
-  }, {} as { [key: string]: Appointment[] });
+const CalendarView: React.FC<CalendarViewProps> = ({ professionals, selectedProfessional, onSelectProfessional }) => {
+    // Start with a fixed date for consistent demo experience
+    const initialDate = new Date('2025-11-20T12:00:00Z');
+    const [currentDate, setCurrentDate] = useState(initialDate);
+    const [selectedDate, setSelectedDate] = useState(initialDate);
 
-  const renderDay = (date: Date) => {
-    const dateString = date.toISOString().split('T')[0];
-    const dayAppointments = appointmentsByDate[dateString] || [];
-    const isToday = date.toDateString() === today.toDateString();
+    const changeMonth = (amount: number) => {
+        setCurrentDate(prev => {
+            const newDate = new Date(prev);
+            newDate.setDate(1); // Avoid issues with different month lengths
+            newDate.setMonth(newDate.getMonth() + amount);
+            return newDate;
+        });
+    };
+
+    const handleDateClick = (day: number) => {
+        const newSelectedDate = new Date(currentDate);
+        newSelectedDate.setDate(day);
+        setSelectedDate(newSelectedDate);
+    };
+
+    const renderTimeSlots = (slots: TimeSlot[] | undefined) => {
+        if (!slots || slots.length === 0) {
+            return <p className="text-xs text-center text-gray-400 mt-4 col-span-full">Sem horários para este dia.</p>;
+        }
+        return slots.map(slot => (
+            <div
+                key={slot.time}
+                className={`
+                    p-2 rounded text-center text-xs font-semibold
+                    ${slot.patient ? 'bg-red-100 text-red-800 cursor-not-allowed' : 'bg-green-100 text-green-800'}
+                `}
+                title={slot.patient ? `Ocupado: ${slot.patient}` : 'Horário disponível'}
+            >
+                {slot.time}
+            </div>
+        ));
+    };
+
+    const renderCalendarGrid = () => {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const firstDayOfMonth = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const days = [];
+        // Add empty cells for days before the 1st of the month
+        for (let i = 0; i < firstDayOfMonth; i++) {
+            days.push(<div key={`empty-${i}`} className="p-1"></div>);
+        }
+
+        // Add cells for each day of the month
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isSelected = selectedDate.getDate() === day && selectedDate.getMonth() === month && selectedDate.getFullYear() === year;
+            const hasAppointments = selectedProfessional?.schedule[dateStr]?.length > 0;
+
+            days.push(
+                <button
+                    key={day}
+                    onClick={() => handleDateClick(day)}
+                    className={`
+                        w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-colors relative
+                        ${isSelected ? 'bg-[#004D5A] text-white ring-2 ring-offset-2 ring-[#004D5A]' : 'hover:bg-gray-100'}
+                    `}
+                >
+                    {day}
+                    {hasAppointments && !isSelected && <div className="absolute bottom-1 w-1.5 h-1.5 bg-[#1B7C75] rounded-full"></div>}
+                </button>
+            );
+        }
+        return days;
+    };
+    
+    const selectedDateString = selectedDate.toISOString().split('T')[0];
+    const slotsForSelectedDay = selectedProfessional?.schedule[selectedDateString];
 
     return (
-      <div key={dateString} className="border border-gray-200 rounded-lg p-3 bg-white flex flex-col">
-        <div className="flex items-center justify-between mb-2">
-          <span className={`font-bold ${isToday ? 'text-[#1B7C75]' : 'text-[#002C3C]'}`}>{weekDays[date.getDay()]}</span>
-          <span className={`px-2 py-0.5 rounded-full text-sm font-semibold ${isToday ? 'bg-[#1B7C75]/20 text-[#1B7C75]' : 'bg-gray-100 text-gray-600'}`}>
-            {date.getDate()}
-          </span>
+        <div className="bg-white rounded-2xl shadow-md p-6 h-full flex flex-col">
+            <h3 className="font-bold text-lg text-[#002C3C] mb-4">Agenda do Profissional</h3>
+            <div className="mb-4">
+                <select
+                    value={selectedProfessional?.id || ''}
+                    onChange={(e) => onSelectProfessional(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#1B7C75] focus:border-[#1B7C75] block p-2.5"
+                >
+                    {professionals.map(prof => (
+                        <option key={prof.id} value={prof.id}>
+                            {prof.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
+            {/* Calendar */}
+            <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                    <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-[#004D5A]">
+                        <i className="ph-bold ph-caret-left"></i>
+                    </button>
+                    <p className="text-sm font-semibold text-gray-700 capitalize">
+                        {currentDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
+                    </p>
+                    <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-[#004D5A]">
+                        <i className="ph-bold ph-caret-right"></i>
+                    </button>
+                </div>
+                <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-500 mb-2">
+                    {WEEKDAYS.map(day => <div key={day}>{day}</div>)}
+                </div>
+                <div className="grid grid-cols-7 gap-1 place-items-center">
+                    {renderCalendarGrid()}
+                </div>
+            </div>
+            
+            <hr className="my-2"/>
+
+            {/* Time Slots */}
+            <div className="flex-grow overflow-y-auto scrollbar-hide -mr-2 pr-2">
+                {selectedProfessional ? (
+                    <div>
+                        <h4 className="font-bold text-center mb-2 text-sm text-[#004D5A]">
+                          Horários para {new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }).format(selectedDate)}
+                        </h4>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            {renderTimeSlots(slotsForSelectedDay)}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex-grow flex items-center justify-center h-full">
+                        <p className="text-gray-500 text-sm">Selecione um profissional para ver a agenda.</p>
+                    </div>
+                )}
+            </div>
         </div>
-        <div className="space-y-2 overflow-y-auto scrollbar-hide flex-grow">
-          {dayAppointments.length > 0 ? (
-            dayAppointments.map(appt => (
-              <div key={appt.id} className="bg-[#004D5A]/10 p-2 rounded-md border-l-4 border-[#004D5A]">
-                <p className="font-bold text-sm text-[#002C3C]">{appt.time}</p>
-                <p className="text-xs text-gray-700">{appt.patient}</p>
-                <p className="text-xs text-gray-500">com {appt.doctor}</p>
-              </div>
-            ))
-          ) : (
-            <div className="text-center text-xs text-gray-400 pt-4">Sem agendamentos</div>
-          )}
-        </div>
-      </div>
     );
-  };
-  
-  const renderWeek = () => {
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    const week = [];
-    for(let i = 0; i < 7; i++) {
-        const day = new Date(startOfWeek);
-        day.setDate(startOfWeek.getDate() + i);
-        week.push(day);
-    }
-    return week.map(day => renderDay(day));
-  }
-
-
-  return (
-    <div className="bg-white rounded-2xl shadow-md p-6 h-full flex flex-col">
-        <h3 className="font-bold text-lg text-[#002C3C] mb-4">Agenda da Semana</h3>
-        <div className="grid grid-cols-7 gap-2 flex-grow">
-            {renderWeek()}
-        </div>
-    </div>
-  );
 };
 
 export default CalendarView;

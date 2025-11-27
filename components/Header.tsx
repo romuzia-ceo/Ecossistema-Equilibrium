@@ -1,14 +1,29 @@
+
+
 import React from 'react';
-import { View } from '../types';
+import { View, SystemUser } from '../types';
+import UserSwitcher from './UserSwitcher';
 
 interface HeaderProps {
   activeView: View;
+  currentUser: SystemUser;
+  setCurrentUser: (user: SystemUser) => void;
 }
 
 const viewTitles: Record<View, string> = {
+  home: 'Início',
   finance: 'BI Financeiro',
   agenda: 'Agenda Inteligente',
+  clinical: 'Atendimento Clínico',
+  marketing: 'Marketing Inteligente',
   settings: 'Configurações',
+  management: 'Gestão da Clínica',
+  patrimony: 'Gestão Patrimonial',
+  inventory: 'Gestão de Estoque',
+  website: 'Portal de Saúde',
+  // FIX: Added 'profile_settings' to match the View type.
+  profile_settings: 'Meu Perfil & Agenda',
+  backend_test: 'Teste de Backend',
 };
 
 const EquilibriumLogo: React.FC = () => (
@@ -20,24 +35,22 @@ const EquilibriumLogo: React.FC = () => (
 );
 
 
-const Header: React.FC<HeaderProps> = ({ activeView }) => {
+const Header: React.FC<HeaderProps> = ({ activeView, currentUser, setCurrentUser }) => {
   return (
-    <header className="bg-white shadow-sm p-4 sticky top-0 z-10">
+    <header className="bg-white shadow-sm p-4 sticky top-0 z-20">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-3">
           <EquilibriumLogo />
           <h1 className="text-xl font-bold text-[#002C3C]">
             Ecossistema Equilibrium 
             <span className="font-normal text-gray-500 hidden sm:inline">
-              {' / ' + viewTitles[activeView]}
+              {' / ' + (viewTitles[activeView] || 'Módulo')}
             </span>
           </h1>
         </div>
         <div className="flex items-center gap-4">
             <i className="ph ph-bell text-2xl text-gray-500 hover:text-[#004D5A] cursor-pointer"></i>
-            <div className="w-9 h-9 bg-[#004D5A] rounded-full flex items-center justify-center text-white font-semibold text-sm" title="Carla (Recepção)">
-                C
-            </div>
+            <UserSwitcher currentUser={currentUser} onUserChange={setCurrentUser} />
         </div>
       </div>
     </header>

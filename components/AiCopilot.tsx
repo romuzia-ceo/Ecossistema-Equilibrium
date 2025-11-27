@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { getFinancialInsights } from '../services/geminiService';
 import { FinancialRecord } from '../types';
@@ -6,6 +7,10 @@ import { FinancialRecord } from '../types';
 interface AiCopilotProps {
   data: FinancialRecord[];
   category: string;
+  dateRange: {
+    start: string;
+    end: string;
+  };
 }
 
 const LoadingSpinner: React.FC = () => (
@@ -17,7 +22,7 @@ const LoadingSpinner: React.FC = () => (
 );
 
 
-const AiCopilot: React.FC<AiCopilotProps> = ({ data, category }) => {
+const AiCopilot: React.FC<AiCopilotProps> = ({ data, category, dateRange }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [insight, setInsight] = useState('');
   const [error, setError] = useState('');
@@ -27,7 +32,7 @@ const AiCopilot: React.FC<AiCopilotProps> = ({ data, category }) => {
     setError('');
     setInsight('');
     try {
-      const result = await getFinancialInsights(data, category);
+      const result = await getFinancialInsights(data, category, dateRange);
       setInsight(result);
     } catch (err: any) {
       setError(err.message || 'Falha ao obter análise.');
